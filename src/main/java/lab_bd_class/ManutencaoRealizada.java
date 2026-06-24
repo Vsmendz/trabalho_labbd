@@ -8,21 +8,16 @@ public class ManutencaoRealizada {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID")
     private Integer id;
 
-    @Column(name = "DATA_MANUTENCAO", nullable = false)
     private LocalDate dataManutencao;
 
-    @Column(name = "KM_FEITO", nullable = false)
     private Integer kmFeito;
 
     @ManyToOne
-    @JoinColumn(name = "PLACA_VEICULO", nullable = false)
     private Veiculo veiculo;
 
     @ManyToOne
-    @JoinColumn(name = "ID_MANUTENCAO", nullable = false)
     private Manutencao manutencao;
 
     public ManutencaoRealizada() {

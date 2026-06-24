@@ -7,13 +7,10 @@ public class Manutencao {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID")
     private Integer id;
 
-    @Column(name = "DESCRICAO", nullable = false, length = 100)
     private String descricao;
 
-    @Column(name = "KM_REFERENCIA", nullable = false)
     private Integer kmReferencia;
 
     public Manutencao() {

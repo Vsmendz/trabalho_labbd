@@ -8,27 +8,20 @@ public class Viagem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID")
     private Integer id;
 
-    @Column(name = "DATA_SAIDA", nullable = false)
     private LocalDateTime dataSaida;
 
-    @Column(name = "DATA_CHEGADA")
     private LocalDateTime dataChegada;
 
-    @Column(name = "KM_INICIAL", nullable = false)
     private Double kmInicial;
 
-    @Column(name = "KM_FINAL")
     private Double kmFinal;
 
     @ManyToOne
-    @JoinColumn(name = "PLACA_VEICULO", nullable = false)
     private Veiculo veiculo;
 
     @ManyToOne
-    @JoinColumn(name = "CPF_MOTORISTA", nullable = false)
     private Motorista motorista;
 
     public Viagem() {

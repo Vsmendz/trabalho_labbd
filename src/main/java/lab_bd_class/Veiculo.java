@@ -5,22 +5,16 @@ import jakarta.persistence.*;
 public class Veiculo {
 
     @Id
-    @Column(name = "PLACA", length = 10)
     private String placa;
 
-    @Column(name = "MODELO", nullable = false, length = 50)
     private String modelo;
 
-    @Column(name = "ANO", nullable = false)
     private Integer ano;
 
-    @Column(name = "QUILOMETRAGEM_ATUAL", nullable = false)
     private Double quilometragemAtual;
 
-    @Column(name = "STATUS_VEICULO", nullable = false, length = 20)
     private String statusVeiculo;
 
-    @Column(name = "TIPO", nullable = false, length = 20)
     private String tipo;
 
     public Veiculo() {

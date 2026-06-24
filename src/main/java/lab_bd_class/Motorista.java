@@ -6,13 +6,10 @@ import jakarta.persistence.*;
 public class Motorista {
 
     @Id
-    @Column(name = "CPF", length = 11)
     private String cpf;
 
-    @Column(name = "NOME", nullable = false, length = 100)
     private String nome;
 
-    @Column(name = "CATEGORIA_CNH", nullable = false, length = 1)
     private String categoriaCnh;
 
     public Motorista() {
