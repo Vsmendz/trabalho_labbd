@@ -1,9 +1,5 @@
 USE frota;
 
--- ==========================================
--- VEICULOS
--- ==========================================
-
 INSERT INTO VEICULO (
     PLACA,
     MODELO,
@@ -38,10 +34,6 @@ VALUES
     'VAN'
 );
 
--- ==========================================
--- MOTORISTAS
--- ==========================================
-
 INSERT INTO MOTORISTA (
     CPF,
     NOME,
@@ -64,10 +56,6 @@ VALUES
     'E'
 );
 
--- ==========================================
--- TIPOS DE MANUTENCAO
--- ==========================================
-
 INSERT INTO MANUTENCAO (
     DESCRICAO,
     KM_REFERENCIA
@@ -76,11 +64,15 @@ VALUES
 (
     'Troca de Oleo',
     10000
+),
+(
+    'Revisao Geral',
+    20000
+),
+(
+    'Troca de Pneus',
+    30000
 );
-
--- ==========================================
--- VIAGENS VALIDAS
--- ==========================================
 
 INSERT INTO VIAGEM (
     DATA_SAIDA,
