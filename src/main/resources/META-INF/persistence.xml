@@ -1,15 +1,26 @@
 <persistence xmlns="https://jakarta.ee/xml/ns/persistence" version="3.0">
-    <persistence-unit name="meu-projeto-pu">
+    <persistence-unit name="LabBD">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+
+        <!-- ⚠️ LISTA EXPLÍCITA DE CLASSES (OBRIGATÓRIO) -->
+        <class>lab_bd_class.Veiculo</class>
+        <class>lab_bd_class.Motorista</class>
+        <class>lab_bd_class.Viagem</class>
+        <class>lab_bd_class.Manutencao</class>
+        <class>lab_bd_class.ManutencaoRealizada</class>
 
         <properties>
             <property name="jakarta.persistence.jdbc.driver" value="com.mysql.cj.jdbc.Driver"/>
-            <property name="jakarta.persistence.jdbc.url" value="jdbc:mysql://localhost:3306/seu_banco"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:mysql://localhost:3306/frota"/>
             <property name="jakarta.persistence.jdbc.user" value="root"/>
-            <property name="jakarta.persistence.jdbc.password" value="sua_senha"/>
+            <property name="jakarta.persistence.jdbc.password" value="1234"/>
 
             <property name="hibernate.show_sql" value="true"/>
             <property name="hibernate.hbm2ddl.auto" value="update"/>
+            <property name="hibernate.format_sql" value="true"/>
+
+            <!-- ⚠️ OBRIGATÓRIO PARA ESCANEAR O PACOTE (CASO NÃO USE <class>) -->
+            <property name="hibernate.archive.autodetection" value="class, hbm"/>
         </properties>
     </persistence-unit>
 </persistence>
