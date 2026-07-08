@@ -31,47 +31,37 @@ BEGIN
 END $$
 
 DELIMITER $$
+DELIMITER $$
 
 CREATE TRIGGER TRG_ALERTA_MANUTENCAO
-AFTER UPDATE ON VEICULO
-FOR EACH ROW
+    AFTER UPDATE ON VEICULO
+    FOR EACH ROW
 BEGIN
 
-    DECLARE V_ID_TIPO INT;
-    
-    SELECT ID
-    INTO V_ID_TIPO
-    FROM MANUTENCAO
-    WHERE KM_REFERENCIA = 10000
-    LIMIT 1;
-
-    IF NEW.QUILOMETRAGEM_ATUAL >= 10000
-       AND FLOOR(OLD.QUILOMETRAGEM_ATUAL / 10000)
-           < FLOOR(NEW.QUILOMETRAGEM_ATUAL / 10000)
-    THEN
-
-        INSERT INTO MANUTENCAO_VEICULO (
-            PLACA_VEICULO,
-            ID_MANUTENCAO,
-            DATA_MANUTENCAO,
-            KM_FEITO,
-            STATUS,
-            OBSERVACAO
-        )
-        VALUES (
-            NEW.PLACA,
-            V_ID_TIPO,
-            NULL,
-            NULL,
-            'PENDENTE',
-            CONCAT(
+    -- O INSERT ... SELECT varre a tabela MANUTENCAO automaticamente
+    INSERT INTO MANUTENCAO_VEICULO (
+        PLACA_VEICULO,
+        ID_MANUTENCAO,
+        DATA_MANUTENCAO,
+        KM_FEITO,
+        STATUS,
+        OBSERVACAO
+    )
+    SELECT
+        NEW.PLACA,
+        ID, -- Pega o ID da manutenção atual sendo lida na tabela
+        NULL,
+        NULL,
+        'PENDENTE',
+        CONCAT(
                 'Manutenção preventiva necessária aos ',
-                FLOOR(NEW.QUILOMETRAGEM_ATUAL / 10000) * 10000,
+                FLOOR(NEW.QUILOMETRAGEM_ATUAL / KM_REFERENCIA) * KM_REFERENCIA,
                 ' km.'
-            )
-        );
-
-    END IF;
+        )
+    FROM MANUTENCAO
+    -- A condição abaixo é testada para CADA linha da tabela MANUTENCAO
+    WHERE NEW.QUILOMETRAGEM_ATUAL >= KM_REFERENCIA
+      AND FLOOR(OLD.QUILOMETRAGEM_ATUAL / KM_REFERENCIA) < FLOOR(NEW.QUILOMETRAGEM_ATUAL / KM_REFERENCIA);
 
 END $$
 
