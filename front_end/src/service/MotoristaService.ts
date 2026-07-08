@@ -15,3 +15,7 @@ export const criarMotorista = async (motorista: MotoristaDTO): Promise<Motorista
   const response = await api.post('/motoristas', motorista);
   return response.data;
 };
+
+export const excluirMotorista = async (cpf: string): Promise<void> => {
+  await api.delete(`/motoristas/${cpf}`);
+};

@@ -29,3 +29,7 @@ export const encerrarViagem = async (id: number, kmFinal: number, observacao?: s
     params: { kmFinal, observacao }
   });
 };
+
+export const excluirViagem = async (id: number): Promise<void> => {
+  await api.delete(`/viagens/${id}`);
+};

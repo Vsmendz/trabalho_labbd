@@ -1,11 +1,10 @@
 import api from './api';
 
-// Interface que o frontend espera (pode ser igual ao DTO do backend)
 export interface VeiculoDTO {
   placa: string;
   modelo: string;
-  ano: number;          // no backend é Integer
-  quilometragemAtual: number; // no frontend é "km" (string)
+  ano: number;
+  quilometragemAtual: number;
   statusVeiculo: string;
   tipo: string;
 }
@@ -21,7 +20,10 @@ export const criarVeiculo = async (veiculo: VeiculoDTO): Promise<VeiculoDTO> => 
 };
 
 export const atualizarStatusVeiculo = async (placa: string, status: string): Promise<VeiculoDTO> => {
-  // Vamos usar um PATCH ou PUT para atualizar apenas o status
   const response = await api.patch(`/veiculos/${placa}/status`, { status });
   return response.data;
+};
+
+export const excluirVeiculo = async (placa: string): Promise<void> => {
+  await api.delete(`/veiculos/${placa}`);
 };
