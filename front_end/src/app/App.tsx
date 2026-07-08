@@ -35,6 +35,7 @@ function fmt(dt: string) {
 
 // ── Main App ───────────────────────────────────────────────────────────
 export default function App() {
+  const [role, setRole] = useState<"operador" | "gerente" | null>(null);
   const [tab, setTab] = useState<Tab>("painel");
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([
@@ -85,6 +86,8 @@ export default function App() {
   const emptyTrip = { origem: "", destino: "", distancia: "", saida: "", chegada: "", veiculoId: 0, motoristaId: 0, passageiros: "", observacoes: "", status: "Em Andamento", km: "" };
   const [tForm, setTForm] = useState(emptyTrip);
   const [tMsg,  setTMsg]  = useState<{ type: "ok"|"err"; text: string }|null>(null);
+  const [cTripId, setCTripId] = useState(0);
+  const [cMsg,    setCMsg]    = useState<{ type: "ok"|"err"; text: string }|null>(null);
   function submitTrip(e: React.FormEvent) {
     e.preventDefault();
     if (!tForm.saida || !tForm.veiculoId || !tForm.motoristaId) {
@@ -94,6 +97,14 @@ export default function App() {
     setTForm(emptyTrip);
     setTMsg({ type: "ok", text: "Viagem cadastrada com sucesso!" });
     setTimeout(() => setTMsg(null), 3000);
+  }
+
+  function concluirViagem() {
+    if (!cTripId) { setCMsg({ type: "err", text: "Selecione uma viagem." }); return; }
+    setTrips(p => p.map(t => t.id === cTripId ? { ...t, status: "Concluída" } : t));
+    setCTripId(0);
+    setCMsg({ type: "ok", text: "Viagem concluída com sucesso!" });
+    setTimeout(() => setCMsg(null), 3000);
   }
 
   const activeVehicles = vehicles.filter(v => v.status === "Disponível");
@@ -134,6 +145,8 @@ export default function App() {
   }
   const activeDrivers  = drivers.filter(d => d.status === "Ativo");
 
+  if (!role) return <LoginScreen onLogin={setRole} />;
+
   return (
     <>
       <style>{styles}</style>
@@ -162,9 +175,11 @@ export default function App() {
             <button className={`nav-item ${tab === "motoristas"  ? "active" : ""}`} onClick={() => setTab("motoristas")}>
               <span>👤</span> Motoristas
             </button>
-            <button className={`nav-item ${tab === "manutencao"  ? "active" : ""}`} onClick={() => setTab("manutencao")}>
-              <span>🔧</span> Manutenção
-            </button>
+            {role === "gerente" && (
+              <button className={`nav-item ${tab === "manutencao" ? "active" : ""}`} onClick={() => setTab("manutencao")}>
+                <span>🔧</span> Manutenção
+              </button>
+            )}
           </nav>
 
           <div className="sidebar-footer">
@@ -172,7 +187,11 @@ export default function App() {
               <div className="stat-row"><span>Viagens</span><strong>{trips.length}</strong></div>
               <div className="stat-row"><span>Veículos</span><strong>{vehicles.length}</strong></div>
               <div className="stat-row"><span>Motoristas</span><strong>{drivers.length}</strong></div>
-              <div className="stat-row"><span>Manutenção</span><strong>{vehicles.filter(v => v.status === "Manutenção").length}</strong></div>
+              {role === "gerente" && <div className="stat-row"><span>Manutenção</span><strong>{vehicles.filter(v => v.status === "Manutenção").length}</strong></div>}
+            </div>
+            <div className="sidebar-user">
+              <span className={`role-badge ${role}`}>{role === "gerente" ? "Gerente" : "Operador"}</span>
+              <button className="btn-logout" onClick={() => { setRole(null); setTab("painel"); }}>Sair</button>
             </div>
           </div>
         </aside>
@@ -277,11 +296,6 @@ export default function App() {
                       ))}
                     </select>
                   </Field>
-                  <Field label="Status">
-                    <select className="input" value={tForm.status} onChange={e => setTForm(f => ({ ...f, status: e.target.value }))}>
-                      {["Em Andamento","Concluída"].map(s => <option key={s}>{s}</option>)}
-                    </select>
-                  </Field>
                   <Field label="Observações" wide>
                     <input className="input" placeholder="Informações adicionais..."
                       value={tForm.observacoes} onChange={e => setTForm(f => ({ ...f, observacoes: e.target.value }))} />
@@ -292,6 +306,30 @@ export default function App() {
                   </div>
                 </form>
                 {tMsg && <div className={`alert ${tMsg.type === "ok" ? "alert-ok" : "alert-err"}`}>{tMsg.text}</div>}
+              </div>
+
+              <div className="card" style={{ marginTop: 20 }}>
+                <h2 className="card-title" style={{ marginBottom: 16 }}>Concluir Viagem</h2>
+                <div className="form-grid">
+                  <Field label="Viagem em Andamento" wide>
+                    <select className="input" value={cTripId || ""} onChange={e => setCTripId(Number(e.target.value))}>
+                      <option value="">— Selecione —</option>
+                      {trips.filter(t => t.status === "Em Andamento").map(t => {
+                        const v = vehicles.find(x => x.id === t.veiculoId);
+                        const m = drivers.find(x => x.id === t.motoristaId);
+                        return (
+                          <option key={t.id} value={t.id}>
+                            {fmt(t.saida)} — {v ? v.placa : "?"} / {m ? m.nome.split(" ")[0] : "?"}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </Field>
+                  <div className="form-actions">
+                    <button type="button" className="btn-primary" onClick={concluirViagem}>Concluir Viagem</button>
+                  </div>
+                </div>
+                {cMsg && <div className={`alert ${cMsg.type === "ok" ? "alert-ok" : "alert-err"}`}>{cMsg.text}</div>}
               </div>
 
               <div className="card" style={{ marginTop: 20 }}>
@@ -688,6 +726,52 @@ function DriverTable({ drivers, onDelete, readonly }: { drivers: Driver[]; onDel
   );
 }
 
+// ── Login Screen ───────────────────────────────────────────────────────
+function LoginScreen({ onLogin }: { onLogin: (role: "operador" | "gerente") => void }) {
+  const [selected, setSelected] = useState<"operador" | "gerente" | null>(null);
+  return (
+    <>
+      <style>{styles}</style>
+      <div className="login-bg">
+        <div className="login-card">
+          <div className="login-logo">
+            <span style={{ fontSize: 40 }}>🚌</span>
+            <h1 className="login-title">TransportControl</h1>
+            <p className="login-sub">Gestão de Frota</p>
+          </div>
+
+          <p className="login-label">Selecione seu perfil de acesso</p>
+
+          <div className="login-roles">
+            <button
+              className={`role-card ${selected === "operador" ? "selected" : ""}`}
+              onClick={() => setSelected("operador")}>
+              <span className="role-card-icon">👷</span>
+              <strong>Operador</strong>
+              <span className="role-card-desc">Viagens, Veículos e Motoristas</span>
+            </button>
+            <button
+              className={`role-card ${selected === "gerente" ? "selected" : ""}`}
+              onClick={() => setSelected("gerente")}>
+              <span className="role-card-icon">🧑‍💼</span>
+              <strong>Gerente</strong>
+              <span className="role-card-desc">Acesso completo incluindo Manutenção</span>
+            </button>
+          </div>
+
+          <button
+            className="btn-primary"
+            style={{ width: "100%", padding: "11px", fontSize: 14, opacity: selected ? 1 : 0.45, cursor: selected ? "pointer" : "not-allowed" }}
+            disabled={!selected}
+            onClick={() => selected && onLogin(selected)}>
+            Entrar
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── Styles ─────────────────────────────────────────────────────────────
 const styles = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -800,6 +884,44 @@ const styles = `
   .btn-despachar:hover { background: #D1FAE5; }
 
   .empty { color: #9CA3AF; font-size: 13px; padding: 16px 0; text-align: center; }
+
+  /* Login */
+  .login-bg {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: #F0F2F5;
+  }
+  .login-card {
+    background: #fff; border: 1px solid #E5E7EB; border-radius: 16px;
+    padding: 40px 36px; width: 100%; max-width: 420px;
+    display: flex; flex-direction: column; gap: 24px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+  }
+  .login-logo { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .login-title { font-size: 22px; font-weight: 700; color: #111928; }
+  .login-sub   { font-size: 13px; color: #6B7280; }
+  .login-label { font-size: 13px; font-weight: 500; color: #374151; text-align: center; }
+
+  .login-roles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .role-card {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 20px 12px; background: #F9FAFB;
+    border: 2px solid #E5E7EB; border-radius: 12px;
+    cursor: pointer; transition: border-color .15s, background .15s;
+    font-family: inherit;
+  }
+  .role-card:hover { border-color: #93C5FD; background: #EFF6FF; }
+  .role-card.selected { border-color: #1A56DB; background: #EBF5FF; }
+  .role-card-icon { font-size: 28px; }
+  .role-card strong { font-size: 14px; color: #111928; }
+  .role-card-desc { font-size: 11px; color: #6B7280; text-align: center; line-height: 1.4; }
+
+  /* Sidebar user */
+  .sidebar-user { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); }
+  .role-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
+  .role-badge.gerente  { background: #1A56DB; color: #fff; }
+  .role-badge.operador { background: rgba(255,255,255,0.12); color: #D1D5DB; }
+  .btn-logout { font-size: 11px; color: #6B7280; background: none; border: none; cursor: pointer; font-family: inherit; transition: color .15s; }
+  .btn-logout:hover { color: #fff; }
 
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
