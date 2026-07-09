@@ -20,7 +20,7 @@ export const criarVeiculo = async (veiculo: VeiculoDTO): Promise<VeiculoDTO> => 
 };
 
 export const atualizarStatusVeiculo = async (placa: string, status: string): Promise<VeiculoDTO> => {
-  const response = await api.patch(`/veiculos/${placa}/status`, { status });
+  const response = await api.patch(`/veiculos/${placa}`, { status });
   return response.data;
 };
 

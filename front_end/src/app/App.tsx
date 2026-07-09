@@ -514,6 +514,19 @@ export default function App() {
       });
   }
 
+  // Função para deletar tipo de manutenção
+  const handleDeleteMaintType = async (id: number) => {
+    try {
+      await excluirManutencao(id);
+      setMaintTypes(prev => prev.filter(x => x.id !== id));
+      setMtMsg({ type: "ok", text: "Tipo de manutenção removido com sucesso!" });
+      setTimeout(() => setMtMsg(null), 3000);
+    } catch (err) {
+      setMtMsg({ type: "err", text: "Erro ao remover tipo de manutenção. Verifique se ele não está em uso." });
+      console.error(err);
+    }
+  };
+
   // ── Abastecimento form ──────────────────────────────────────────────
   const emptyAbast = { placaVeiculo: "", data: "", litros: "", combustivel: "Diesel", custo: "", observacoes: "" };
   const [aForm, setAForm] = useState(emptyAbast);
@@ -1089,7 +1102,7 @@ export default function App() {
                             <tr key={t.id}>
                               <td><strong>{t.descricao}</strong></td>
                               <td className="mono">{t.kmRef ? Number(t.kmRef).toLocaleString("pt-BR") + " km" : "—"}</td>
-                              <td><button className="btn-del" onClick={() => setMaintTypes(p => p.filter(x => x.id !== t.id))}>✕</button></td>
+                              <td><button className="btn-del" onClick={() => handleDeleteMaintType(t.id)}>✕</button></td>
                             </tr>
                           ))}
                         </tbody>

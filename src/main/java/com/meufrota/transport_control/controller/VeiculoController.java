@@ -1,18 +1,29 @@
 package com.meufrota.transport_control.controller;
 
-import com.meufrota.transport_control.dto.VeiculoDTO;
-import com.meufrota.transport_control.entity.Veiculo;
-import com.meufrota.transport_control.service.VeiculoService;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.meufrota.transport_control.dto.VeiculoDTO;
+import com.meufrota.transport_control.entity.Veiculo;
+import com.meufrota.transport_control.service.VeiculoService;
+
+@CrossOrigin(origins = "http://localhost:5173", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE, RequestMethod.OPTIONS})
 @RestController
 @RequestMapping("/api/veiculos")
-@CrossOrigin(origins = "http://localhost:5173")
 public class VeiculoController {
 
     private final VeiculoService veiculoService;
@@ -56,13 +67,34 @@ public class VeiculoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(toDTO(salvo));
     }
 
-    // Atualizar veículo
+    // Atualizar veículo inteiro
     @PutMapping("/{placa}")
     public ResponseEntity<VeiculoDTO> atualizar(@PathVariable String placa, @RequestBody VeiculoDTO dto) {
         Veiculo veiculo = toEntity(dto);
         veiculo.setPlaca(placa); // garante que a placa é a da URL
         Veiculo atualizado = veiculoService.atualizar(veiculo);
         return ResponseEntity.ok(toDTO(atualizado));
+    }
+
+// Atualizar APENAS o status do veículo (Usado para enviar/despachar da manutenção)
+    @PatchMapping("/{placa}")
+    public ResponseEntity<VeiculoDTO> atualizarStatus(@PathVariable String placa, @RequestBody java.util.Map<String, String> payload) {
+        Veiculo veiculo = veiculoService.buscarPorPlaca(placa);
+        
+        // Tenta buscar o status das duas formas mais comuns que o frontend pode ter enviado
+        String novoStatus = payload.get("statusVeiculo");
+        if (novoStatus == null) {
+            novoStatus = payload.get("status");
+        }
+        
+        // Se achou o status, atualiza. Senão, retorna erro 400 (Bad Request)
+        if (novoStatus != null) {
+            veiculo.setStatusVeiculo(novoStatus);
+            Veiculo atualizado = veiculoService.atualizar(veiculo);
+            return ResponseEntity.ok(toDTO(atualizado));
+        } else {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     // Excluir veículo

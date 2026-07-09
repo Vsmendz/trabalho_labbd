@@ -1,18 +1,29 @@
 package com.meufrota.transport_control.controller;
 
-import com.meufrota.transport_control.dto.ManutencaoVeiculoDTO;
-import com.meufrota.transport_control.entity.ManutencaoVeiculo;
-import com.meufrota.transport_control.service.ManutencaoVeiculoService;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.meufrota.transport_control.dto.ManutencaoVeiculoDTO;
+import com.meufrota.transport_control.entity.ManutencaoVeiculo;
+import com.meufrota.transport_control.service.ManutencaoVeiculoService;
+
 @RestController
 @RequestMapping("/api/manutencoes-veiculos")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "http://localhost:5173", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE, RequestMethod.OPTIONS})
+
 public class ManutencaoVeiculoController {
 
     private final ManutencaoVeiculoService manutencaoVeiculoService;
