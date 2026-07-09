@@ -4,7 +4,7 @@ import { listarMotoristas, criarMotorista, excluirMotorista, MotoristaDTO } from
 import { listarViagens, criarViagem, excluirViagem, encerrarViagem, ViagemDTO } from '../service/ViagemService';
 import { listarManutencoes, criarManutencao, excluirManutencao, ManutencaoDTO } from '../service/ManutencaoService';
 import { listarAbastecimentos, criarAbastecimento, excluirAbastecimento, AbastecimentoDTO } from '../service/AbastecimentoService';
-import { listarManutencoesVeiculo, criarManutencaoVeiculo,atualizarStatusManutencao, excluirManutencaoVeiculo, ManutencaoVeiculoDTO ,atualizarManutencaoVeiculo} from '../service/mn';
+import { listarManutencoesVeiculo, criarManutencaoVeiculo, excluirManutencaoVeiculo, ManutencaoVeiculoDTO } from '../service/mn';
 
 // ── Types ──────────────────────────────────────────────────────────────
 interface Vehicle {
@@ -148,9 +148,7 @@ export default function App() {
         }));
 
         const mappedViagens: Trip[] = viagensData.map(t => {
-          // Encontra o veículo pela placa
           const veiculo = mappedVeiculos.find(v => v.placa === t.placaVeiculo);
-          // Encontra o motorista pelo CPF
           const motorista = mappedMotoristas.find(m => m.cpf === t.cpfMotorista);
           
           return {
@@ -160,8 +158,8 @@ export default function App() {
             distancia: t.distancia || '',
             saida: t.dataSaida || '',
             chegada: t.dataChegada || '',
-            veiculoId: veiculo?.id || 0,        // Agora pega o ID real
-            motoristaId: motorista?.id || 0,     // Agora pega o ID real
+            veiculoId: veiculo?.id || 0,
+            motoristaId: motorista?.id || 0,
             passageiros: t.passageiros || '',
             observacoes: t.observacao || '',
             status: t.status === 'EM_ANDAMENTO' ? 'Em Andamento' : 
@@ -415,7 +413,7 @@ export default function App() {
     }
     const novaViagem = {
       dataSaida: new Date(tForm.saida).toISOString(),
-      kmInicial: Number(tForm.km) || 0,  // ← CORRIGIDO: Usa o KM do formulário
+      kmInicial: Number(tForm.km) || 0,  // Usa o KM digitado no formulário
       status: tForm.status === 'Em Andamento' ? 'EM_ANDAMENTO' : 'FINALIZADA',
       observacao: tForm.observacoes,
       placaVeiculo: veiculo.placa,
@@ -435,7 +433,7 @@ export default function App() {
           passageiros: tForm.passageiros,
           observacoes: tForm.observacoes,
           status: tForm.status,
-          km: tForm.km,  // ← Salva o KM digitado na viagem
+          km: tForm.km,  // Salva o KM digitado
         };
         setTrips(prev => [...prev, newTrip]);
         setVehicles(prev =>
@@ -535,7 +533,7 @@ export default function App() {
         
         console.log('Manutenções para excluir:', manutencoesPendentes);
         
-        // 3. EXCLUI cada manutenção pendente
+        // 3. EXCLUI cada manutenção pendente da tabela manutencao_veiculo
         for (const mv of manutencoesPendentes) {
           try {
             console.log('Excluindo manutenção:', mv.id);
@@ -563,7 +561,7 @@ export default function App() {
         console.error(err);
       });
   }
-  
+
   // ── Maintenance types ──────────────────────────────────────────────
   const [mtForm, setMtForm] = useState({ descricao: "", kmRef: "" });
   const [mtMsg, setMtMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -1228,51 +1226,6 @@ export default function App() {
                   )}
                 </div>
               </div>
-
-              <div className="card" style={{ marginBottom: 20 }}>
-                <h2 className="card-title" style={{ marginBottom: 20 }}>Registrar Manutenção para Veículo</h2>
-                <form className="form-grid" onSubmit={submitManutencaoVeiculo}>
-                  <Field label="Veículo *">
-                    <select className="input" value={mvForm.placaVeiculo} onChange={e => setMvForm(f => ({ ...f, placaVeiculo: e.target.value }))}>
-                      <option value="">— Selecione —</option>
-                      {vehicles.map(v => (
-                        <option key={v.id} value={v.placa}>{v.placa} — {v.modelo}</option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label="Tipo de Manutenção *">
-                    <select className="input" value={mvForm.descricaoManutencao} onChange={e => setMvForm(f => ({ ...f, descricaoManutencao: e.target.value }))}>
-                      <option value="">— Selecione —</option>
-                      {maintTypes.map(mt => (
-                        <option key={mt.id} value={mt.descricao}>{mt.descricao}</option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label="KM Atual">
-                    <input className="input" type="number" placeholder="Ex: 50000" value={mvForm.kmFeito} onChange={e => setMvForm(f => ({ ...f, kmFeito: e.target.value }))} />
-                  </Field>
-                  <Field label="Status">
-                    <select className="input" value={mvForm.status} onChange={e => setMvForm(f => ({ ...f, status: e.target.value }))}>
-                      <option value="PENDENTE">Pendente</option>
-                      <option value="EM_ANDAMENTO">Em Andamento</option>
-                      <option value="CONCLUIDA">Concluída</option>
-                      <option value="CANCELADA">Cancelada</option>
-                    </select>
-                  </Field>
-                  <Field label="Data Manutenção">
-                    <input className="input" type="date" value={mvForm.dataManutencao} onChange={e => setMvForm(f => ({ ...f, dataManutencao: e.target.value }))} />
-                  </Field>
-                  <Field label="Observação">
-                    <input className="input" placeholder="Detalhes adicionais..." value={mvForm.observacao} onChange={e => setMvForm(f => ({ ...f, observacao: e.target.value }))} />
-                  </Field>
-                  <div className="form-actions">
-                    <button type="submit" className="btn-primary">Registrar Manutenção</button>
-                    <button type="button" className="btn-ghost" onClick={() => setMvForm(emptyMvForm)}>Limpar</button>
-                  </div>
-                </form>
-                {mvMsg && <div className={`alert ${mvMsg.type === "ok" ? "alert-ok" : "alert-err"}`}>{mvMsg.text}</div>}
-              </div>
-
               <div className="card" style={{ marginBottom: 20 }}>
                 <div className="card-header">
                   <h2 className="card-title">Quadro de Necessidade de Manutenção</h2>
@@ -1289,10 +1242,8 @@ export default function App() {
                         <tr>
                           <th>Veículo</th>
                           <th>Placa</th>
-                          <th>KM Atual</th>
                           <th>Tipo de Manutenção</th>
                           <th>Status</th>
-                          <th>Data Manutenção</th>
                           <th>Observação</th>
                         </tr>
                       </thead>
@@ -1306,8 +1257,8 @@ export default function App() {
                                 return <span className="badge badge-red">⚠ Pendente</span>;
                               case 'EM_ANDAMENTO':
                                 return <span className="badge badge-yellow">Em Andamento</span>;
-                              case 'CONCLUIDA':
-                                return <span className="badge badge-green">✅ Concluída</span>;
+                              case 'REALIZADA':
+                                return <span className="badge badge-green">✅ Realizada</span>;
                               case 'CANCELADA':
                                 return <span className="badge badge-gray">Cancelada</span>;
                               default:
@@ -1319,14 +1270,8 @@ export default function App() {
                             <tr key={mv.id}>
                               <td><strong>{veiculo?.modelo || '—'}</strong></td>
                               <td><span className="placa">{mv.placaVeiculo}</span></td>
-                              <td className="mono">
-                                {mv.kmFeito ? mv.kmFeito.toLocaleString("pt-BR") + " km" : "—"}
-                              </td>
                               <td>{mv.descricaoManutencao || '—'}</td>
                               <td>{statusBadge()}</td>
-                              <td className="mono">
-                                {mv.dataManutencao ? fmt(mv.dataManutencao) : "—"}
-                              </td>
                               <td style={{ maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {mv.observacao || "—"}
                               </td>
