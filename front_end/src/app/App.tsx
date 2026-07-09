@@ -229,22 +229,37 @@ export default function App() {
   };
 
   // Viagens
+// Viagens
   const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
   const [delTripMsg, setDelTripMsg] = useState<{ type: "ok"|"err"; text: string } | null>(null);
+  
   const handleDeleteTrip = async () => {
-    if (!selectedTripId) {
-      setDelTripMsg({ type: "err", text: "Selecione uma viagem." });
-      setTimeout(() => setDelTripMsg(null), 3000);
-      return;
-    }
+    if (!selectedTripId) return;
+    
+    // 1. Encontra a viagem e o veículo associado ANTES de excluir
+    const trip = trips.find(t => t.id === selectedTripId);
+    const veiculo = vehicles.find(v => v.id === trip?.veiculoId);
+
     try {
+      // 2. Exclui a viagem no banco de dados
       await excluirViagem(selectedTripId);
+
+      // 3. Se a viagem tinha um veículo, libera ele no banco e na tela
+      if (veiculo) {
+        await atualizarStatusVeiculo(veiculo.placa, "DISPONIVEL");
+        setVehicles(prev => prev.map(v => 
+          v.id === veiculo.id ? { ...v, status: "Disponível" } : v
+        ));
+      }
+
+      // 4. Atualiza a lista de viagens na tela
       setTrips(prev => prev.filter(t => t.id !== selectedTripId));
       setSelectedTripId(null);
-      setDelTripMsg({ type: "ok", text: "Viagem removida com sucesso!" });
+      setDelTripMsg({ type: "ok", text: "Viagem removida e veículo liberado!" }); 
       setTimeout(() => setDelTripMsg(null), 3000);
-    } catch (err) {
-      setDelTripMsg({ type: "err", text: "Erro ao excluir viagem." });
+      
+    } catch (err) { 
+      setDelTripMsg({ type: "err", text: "Erro ao excluir a viagem." }); 
       console.error(err);
     }
   };

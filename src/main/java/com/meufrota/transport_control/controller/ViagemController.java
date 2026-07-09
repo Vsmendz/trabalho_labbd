@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,6 +46,15 @@ public class ViagemController {
                                                @RequestParam(required = false) String observacao) {
         viagemService.encerrarViagem(id, kmFinal, observacao);
         return ResponseEntity.ok().build();
+    }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> excluirViagem(@PathVariable Integer id) {
+        // Presumindo que o método no seu service se chama "excluir" ou "deletar".
+        // Se o nome do método no seu ViagemService for diferente, mude a linha abaixo:
+        viagemService.excluir(id); 
+        
+        return ResponseEntity.noContent().build();
     }
 
     // Listar todas as viagens
