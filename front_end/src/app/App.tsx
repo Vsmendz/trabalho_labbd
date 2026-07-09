@@ -4,6 +4,7 @@ import { listarMotoristas, criarMotorista, excluirMotorista, MotoristaDTO } from
 import { listarViagens, criarViagem, excluirViagem, encerrarViagem, ViagemDTO } from '../service/ViagemService';
 import { listarManutencoes, criarManutencao, excluirManutencao, ManutencaoDTO } from '../service/ManutencaoService';
 import { listarAbastecimentos, criarAbastecimento, excluirAbastecimento, AbastecimentoDTO } from '../service/AbastecimentoService';
+import { listarManutencoesVeiculo, criarManutencaoVeiculo,atualizarStatusManutencao, excluirManutencaoVeiculo, ManutencaoVeiculoDTO ,atualizarManutencaoVeiculo} from '../service/mn';
 
 // ── Types ──────────────────────────────────────────────────────────────
 interface Vehicle {
@@ -47,6 +48,16 @@ interface Abastecimento {
   combustivel: string;
   custo: string;
   observacoes: string;
+}
+interface ManutencaoVeiculo {
+  id: number;
+  dataGeracao: string;
+  dataManutencao: string;
+  kmFeito: number;
+  status: string;
+  observacao: string;
+  placaVeiculo: string;
+  descricaoManutencao: string;
 }
 type Tab = "painel" | "viagens" | "veiculos" | "motoristas" | "manutencao" | "abastecimentos";
 
@@ -98,6 +109,7 @@ export default function App() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [maintTypes, setMaintTypes] = useState<{ id: number; descricao: string; kmRef: string }[]>([]);
   const [abastecimentos, setAbastecimentos] = useState<Abastecimento[]>([]);
+  const [manutencoesVeiculo, setManutencoesVeiculo] = useState<ManutencaoVeiculo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -106,12 +118,13 @@ export default function App() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [veiculosData, motoristasData, viagensData, manutencoesData, abastecimentosData] = await Promise.all([
+        const [veiculosData, motoristasData, viagensData, manutencoesData, abastecimentosData, manutencoesVeiculoData] = await Promise.all([
           listarVeiculos(),
           listarMotoristas(),
           listarViagens(),
           listarManutencoes(),
           listarAbastecimentos().catch(() => []),
+          listarManutencoesVeiculo().catch(() => []),
         ]);
 
         const mappedVeiculos: Vehicle[] = veiculosData.map(v => ({
@@ -134,20 +147,29 @@ export default function App() {
           status: 'Ativo',
         }));
 
-        const mappedViagens: Trip[] = viagensData.map(t => ({
-          id: t.id || Date.now() + Math.random(),
-          origem: '',
-          destino: '',
-          distancia: '',
-          saida: t.dataSaida || '',
-          chegada: t.dataChegada || '',
-          veiculoId: 0,
-          motoristaId: 0,
-          passageiros: '',
-          observacoes: t.observacao || '',
-          status: t.status === 'EM_ANDAMENTO' ? 'Em Andamento' : 'Concluída',
-          km: String(t.kmInicial || 0),
-        }));
+        const mappedViagens: Trip[] = viagensData.map(t => {
+          // Encontra o veículo pela placa
+          const veiculo = mappedVeiculos.find(v => v.placa === t.placaVeiculo);
+          // Encontra o motorista pelo CPF
+          const motorista = mappedMotoristas.find(m => m.cpf === t.cpfMotorista);
+          
+          return {
+            id: t.id || Date.now() + Math.random(),
+            origem: t.origem || '',
+            destino: t.destino || '',
+            distancia: t.distancia || '',
+            saida: t.dataSaida || '',
+            chegada: t.dataChegada || '',
+            veiculoId: veiculo?.id || 0,        // Agora pega o ID real
+            motoristaId: motorista?.id || 0,     // Agora pega o ID real
+            passageiros: t.passageiros || '',
+            observacoes: t.observacao || '',
+            status: t.status === 'EM_ANDAMENTO' ? 'Em Andamento' : 
+                    t.status === 'FINALIZADA' ? 'Concluída' : 
+                    t.status === 'CANCELADA' ? 'Cancelada' : 'Agendada',
+            km: String(t.kmInicial || 0),
+          };
+        });
 
         const mappedMaint = manutencoesData.map(m => ({
           id: m.id || Date.now() + Math.random(),
@@ -166,11 +188,23 @@ export default function App() {
           observacoes: a.obs || '',
         }));
 
+        const mappedManutVeiculo: ManutencaoVeiculo[] = manutencoesVeiculoData.map(mv => ({
+          id: mv.id || 0,
+          dataGeracao: mv.dataGeracao || '',
+          dataManutencao: mv.dataManutencao || '',
+          kmFeito: mv.kmFeito || 0,
+          status: mv.status || '',
+          observacao: mv.observacao || '',
+          placaVeiculo: mv.placaVeiculo || '',
+          descricaoManutencao: mv.descricaoManutencao || '',
+        }));
+
         setVehicles(mappedVeiculos);
         setDrivers(mappedMotoristas);
         setTrips(mappedViagens);
         setMaintTypes(mappedMaint);
         setAbastecimentos(mappedAbast);
+        setManutencoesVeiculo(mappedManutVeiculo);
       } catch (err) {
         setError('Erro ao carregar dados do servidor.');
         console.error(err);
@@ -229,22 +263,18 @@ export default function App() {
   };
 
   // Viagens
-// Viagens
   const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
   const [delTripMsg, setDelTripMsg] = useState<{ type: "ok"|"err"; text: string } | null>(null);
   
   const handleDeleteTrip = async () => {
     if (!selectedTripId) return;
     
-    // 1. Encontra a viagem e o veículo associado ANTES de excluir
     const trip = trips.find(t => t.id === selectedTripId);
     const veiculo = vehicles.find(v => v.id === trip?.veiculoId);
 
     try {
-      // 2. Exclui a viagem no banco de dados
       await excluirViagem(selectedTripId);
 
-      // 3. Se a viagem tinha um veículo, libera ele no banco e na tela
       if (veiculo) {
         await atualizarStatusVeiculo(veiculo.placa, "DISPONIVEL");
         setVehicles(prev => prev.map(v => 
@@ -252,7 +282,6 @@ export default function App() {
         ));
       }
 
-      // 4. Atualiza a lista de viagens na tela
       setTrips(prev => prev.filter(t => t.id !== selectedTripId));
       setSelectedTripId(null);
       setDelTripMsg({ type: "ok", text: "Viagem removida e veículo liberado!" }); 
@@ -386,7 +415,7 @@ export default function App() {
     }
     const novaViagem = {
       dataSaida: new Date(tForm.saida).toISOString(),
-      kmInicial: Number(veiculo.km) || 0,
+      kmInicial: Number(tForm.km) || 0,  // ← CORRIGIDO: Usa o KM do formulário
       status: tForm.status === 'Em Andamento' ? 'EM_ANDAMENTO' : 'FINALIZADA',
       observacao: tForm.observacoes,
       placaVeiculo: veiculo.placa,
@@ -406,10 +435,9 @@ export default function App() {
           passageiros: tForm.passageiros,
           observacoes: tForm.observacoes,
           status: tForm.status,
-          km: tForm.km,
+          km: tForm.km,  // ← Salva o KM digitado na viagem
         };
         setTrips(prev => [...prev, newTrip]);
-        // Atualizar status do veículo para "Em Rota"
         setVehicles(prev =>
           prev.map(v =>
             v.id === tForm.veiculoId
@@ -438,7 +466,6 @@ export default function App() {
     }
     encerrarViagem(cTripId, kmNum, "")
       .then(() => {
-        // Encontrar veículo associado e atualizar para "Disponível"
         const trip = trips.find(t => t.id === cTripId);
         if (trip) {
           setVehicles(prev =>
@@ -487,12 +514,48 @@ export default function App() {
 
   function despachar(id: number) {
     const veiculo = vehicles.find(v => v.id === id);
-    if (!veiculo) return;
+    if (!veiculo) {
+      setMMsg({ type: "err", text: "Veículo não encontrado." });
+      return;
+    }
+    
+    // 1. Atualiza o status do veículo para DISPONIVEL
     atualizarStatusVeiculo(veiculo.placa, "DISPONIVEL")
-      .then(data => {
-        setVehicles(prev => prev.map(v => v.placa === data.placa ? { ...v, status: statusBackToFront(data.statusVeiculo) } : v));
-        setMVeiculoId(0); setMObs("");
-        setMMsg({ type: "ok", text: "Veículo despachado com sucesso!" });
+      .then(async (data) => {
+        // Atualiza o veículo na lista local
+        setVehicles(prev => prev.map(v => 
+          v.placa === data.placa ? { ...v, status: statusBackToFront(data.statusVeiculo) } : v
+        ));
+        
+        // 2. Busca as manutenções PENDENTE/EM_ANDAMENTO deste veículo
+        const manutencoesPendentes = manutencoesVeiculo.filter(
+          mv => mv.placaVeiculo === veiculo.placa && 
+          (mv.status?.toUpperCase() === 'PENDENTE' || mv.status?.toUpperCase() === 'EM_ANDAMENTO')
+        );
+        
+        console.log('Manutenções para excluir:', manutencoesPendentes);
+        
+        // 3. EXCLUI cada manutenção pendente
+        for (const mv of manutencoesPendentes) {
+          try {
+            console.log('Excluindo manutenção:', mv.id);
+            await excluirManutencaoVeiculo(mv.id);
+            console.log('Manutenção', mv.id, 'excluída com sucesso!');
+          } catch (err) {
+            console.error(`Erro ao excluir manutenção ${mv.id}:`, err);
+          }
+        }
+        
+        // 4. Remove as manutenções da lista local (atualiza o quadro)
+        setManutencoesVeiculo(prev => prev.filter(mv => 
+          !(mv.placaVeiculo === veiculo.placa && 
+            (mv.status?.toUpperCase() === 'PENDENTE' || mv.status?.toUpperCase() === 'EM_ANDAMENTO'))
+        ));
+        
+        // 5. Limpa os campos
+        setMVeiculoId(0); 
+        setMObs("");
+        setMMsg({ type: "ok", text: "Veículo despachado e manutenções removidas! 🗑️" });
         setTimeout(() => setMMsg(null), 3000);
       })
       .catch(err => {
@@ -500,7 +563,7 @@ export default function App() {
         console.error(err);
       });
   }
-
+  
   // ── Maintenance types ──────────────────────────────────────────────
   const [mtForm, setMtForm] = useState({ descricao: "", kmRef: "" });
   const [mtMsg, setMtMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -529,7 +592,6 @@ export default function App() {
       });
   }
 
-  // Função para deletar tipo de manutenção
   const handleDeleteMaintType = async (id: number) => {
     try {
       await excluirManutencao(id);
@@ -541,6 +603,50 @@ export default function App() {
       console.error(err);
     }
   };
+
+  // ── Manutenção Veículo form ────────────────────────────────────────
+  const emptyMvForm = { placaVeiculo: "", descricaoManutencao: "", kmFeito: "", status: "PENDENTE", dataManutencao: "", observacao: "" };
+  const [mvForm, setMvForm] = useState(emptyMvForm);
+  const [mvMsg, setMvMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  function submitManutencaoVeiculo(e: React.FormEvent) {
+    e.preventDefault();
+    if (!mvForm.placaVeiculo || !mvForm.descricaoManutencao) {
+      setMvMsg({ type: "err", text: "Preencha veículo e tipo de manutenção." });
+      return;
+    }
+
+    const novaManutencaoVeiculo = {
+      placaVeiculo: mvForm.placaVeiculo,
+      descricaoManutencao: mvForm.descricaoManutencao,
+      kmFeito: Number(mvForm.kmFeito) || 0,
+      status: mvForm.status,
+      dataManutencao: mvForm.dataManutencao || new Date().toISOString(),
+      observacao: mvForm.observacao,
+    };
+
+    criarManutencaoVeiculo(novaManutencaoVeiculo)
+      .then(data => {
+        const newMv: ManutencaoVeiculo = {
+          id: data.id || Date.now(),
+          dataGeracao: data.dataGeracao || '',
+          dataManutencao: data.dataManutencao || '',
+          kmFeito: data.kmFeito || 0,
+          status: data.status || '',
+          observacao: data.observacao || '',
+          placaVeiculo: data.placaVeiculo || '',
+          descricaoManutencao: data.descricaoManutencao || '',
+        };
+        setManutencoesVeiculo(prev => [...prev, newMv]);
+        setMvForm(emptyMvForm);
+        setMvMsg({ type: "ok", text: "Registro de manutenção criado com sucesso!" });
+        setTimeout(() => setMvMsg(null), 3000);
+      })
+      .catch(err => {
+        setMvMsg({ type: "err", text: "Erro ao criar registro de manutenção." });
+        console.error(err);
+      });
+  }
 
   // ── Abastecimento form ──────────────────────────────────────────────
   const emptyAbast = { placaVeiculo: "", data: "", litros: "", combustivel: "Diesel", custo: "", observacoes: "" };
@@ -806,7 +912,6 @@ export default function App() {
                 )}
               </div>
 
-              {/* Seletor de exclusão de viagens */}
               <div className="card" style={{ marginTop: 20 }}>
                 <h2 className="card-title" style={{ marginBottom: 16 }}>Remover Viagem</h2>
                 <div className="form-grid">
@@ -875,7 +980,6 @@ export default function App() {
                 <VehicleTable vehicles={vehicles} />
               </div>
 
-              {/* Seletor de exclusão de veículos */}
               <div className="card" style={{ marginTop: 20 }}>
                 <h2 className="card-title" style={{ marginBottom: 16 }}>Remover Veículo</h2>
                 <div className="form-grid">
@@ -928,7 +1032,6 @@ export default function App() {
                 <DriverTable drivers={drivers} />
               </div>
 
-              {/* Seletor de exclusão de motoristas */}
               <div className="card" style={{ marginTop: 20 }}>
                 <h2 className="card-title" style={{ marginBottom: 16 }}>Remover Motorista</h2>
                 <div className="form-grid">
@@ -1012,7 +1115,6 @@ export default function App() {
                 )}
               </div>
 
-              {/* Seletor de exclusão de abastecimentos */}
               <div className="card" style={{ marginTop: 20 }}>
                 <h2 className="card-title" style={{ marginBottom: 16 }}>Remover Abastecimento</h2>
                 <div className="form-grid">
@@ -1128,39 +1230,109 @@ export default function App() {
               </div>
 
               <div className="card" style={{ marginBottom: 20 }}>
+                <h2 className="card-title" style={{ marginBottom: 20 }}>Registrar Manutenção para Veículo</h2>
+                <form className="form-grid" onSubmit={submitManutencaoVeiculo}>
+                  <Field label="Veículo *">
+                    <select className="input" value={mvForm.placaVeiculo} onChange={e => setMvForm(f => ({ ...f, placaVeiculo: e.target.value }))}>
+                      <option value="">— Selecione —</option>
+                      {vehicles.map(v => (
+                        <option key={v.id} value={v.placa}>{v.placa} — {v.modelo}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Tipo de Manutenção *">
+                    <select className="input" value={mvForm.descricaoManutencao} onChange={e => setMvForm(f => ({ ...f, descricaoManutencao: e.target.value }))}>
+                      <option value="">— Selecione —</option>
+                      {maintTypes.map(mt => (
+                        <option key={mt.id} value={mt.descricao}>{mt.descricao}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="KM Atual">
+                    <input className="input" type="number" placeholder="Ex: 50000" value={mvForm.kmFeito} onChange={e => setMvForm(f => ({ ...f, kmFeito: e.target.value }))} />
+                  </Field>
+                  <Field label="Status">
+                    <select className="input" value={mvForm.status} onChange={e => setMvForm(f => ({ ...f, status: e.target.value }))}>
+                      <option value="PENDENTE">Pendente</option>
+                      <option value="EM_ANDAMENTO">Em Andamento</option>
+                      <option value="CONCLUIDA">Concluída</option>
+                      <option value="CANCELADA">Cancelada</option>
+                    </select>
+                  </Field>
+                  <Field label="Data Manutenção">
+                    <input className="input" type="date" value={mvForm.dataManutencao} onChange={e => setMvForm(f => ({ ...f, dataManutencao: e.target.value }))} />
+                  </Field>
+                  <Field label="Observação">
+                    <input className="input" placeholder="Detalhes adicionais..." value={mvForm.observacao} onChange={e => setMvForm(f => ({ ...f, observacao: e.target.value }))} />
+                  </Field>
+                  <div className="form-actions">
+                    <button type="submit" className="btn-primary">Registrar Manutenção</button>
+                    <button type="button" className="btn-ghost" onClick={() => setMvForm(emptyMvForm)}>Limpar</button>
+                  </div>
+                </form>
+                {mvMsg && <div className={`alert ${mvMsg.type === "ok" ? "alert-ok" : "alert-err"}`}>{mvMsg.text}</div>}
+              </div>
+
+              <div className="card" style={{ marginBottom: 20 }}>
                 <div className="card-header">
                   <h2 className="card-title">Quadro de Necessidade de Manutenção</h2>
-                  <span style={{ fontSize: 12, color: "#6B7280" }}>Baseado no KM atual vs. KM de referência</span>
+                  <span style={{ fontSize: 12, color: "#6B7280" }}>
+                    Baseado nos registros de manutenção por veículo
+                  </span>
                 </div>
-                {maintTypes.length === 0 || vehicles.length === 0 ? (
-                  <p className="empty">Cadastre tipos de manutenção e veículos para ver o quadro.</p>
+                {manutencoesVeiculo.length === 0 ? (
+                  <p className="empty">Nenhum registro de manutenção por veículo encontrado.</p>
                 ) : (
                   <div className="table-wrap">
                     <table className="table">
-                      <thead><tr><th>Veículo</th><th>Placa</th><th>KM Atual</th><th>Tipo de Manutenção</th><th>KM Ref.</th><th>Situação</th></tr></thead>
+                      <thead>
+                        <tr>
+                          <th>Veículo</th>
+                          <th>Placa</th>
+                          <th>KM Atual</th>
+                          <th>Tipo de Manutenção</th>
+                          <th>Status</th>
+                          <th>Data Manutenção</th>
+                          <th>Observação</th>
+                        </tr>
+                      </thead>
                       <tbody>
-                        {vehicles.flatMap(v =>
-                          maintTypes.map(t => {
-                            const kmAtual = Number(v.km) || 0;
-                            const kmRef = Number(t.kmRef) || 0;
-                            const vencido = kmRef > 0 && kmAtual >= kmRef;
-                            const proximo = kmRef > 0 && kmAtual >= kmRef * 0.85 && !vencido;
-                            return (
-                              <tr key={`${v.id}-${t.id}`}>
-                                <td><strong>{v.modelo}</strong></td>
-                                <td><span className="placa">{v.placa}</span></td>
-                                <td className="mono">{kmAtual ? kmAtual.toLocaleString("pt-BR") + " km" : "—"}</td>
-                                <td>{t.descricao}</td>
-                                <td className="mono">{kmRef ? kmRef.toLocaleString("pt-BR") + " km" : "—"}</td>
-                                <td>
-                                  {vencido ? <span className="badge badge-red">⚠ Vencido</span> :
-                                   proximo ? <span className="badge badge-yellow">Próximo</span> :
-                                   <span className="badge badge-green">Em dia</span>}
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
+                        {manutencoesVeiculo.map(mv => {
+                          const veiculo = vehicles.find(v => v.placa === mv.placaVeiculo);
+                          
+                          const statusBadge = () => {
+                            switch(mv.status?.toUpperCase()) {
+                              case 'PENDENTE':
+                                return <span className="badge badge-red">⚠ Pendente</span>;
+                              case 'EM_ANDAMENTO':
+                                return <span className="badge badge-yellow">Em Andamento</span>;
+                              case 'CONCLUIDA':
+                                return <span className="badge badge-green">✅ Concluída</span>;
+                              case 'CANCELADA':
+                                return <span className="badge badge-gray">Cancelada</span>;
+                              default:
+                                return <span className="badge badge-gray">{mv.status || '—'}</span>;
+                            }
+                          };
+
+                          return (
+                            <tr key={mv.id}>
+                              <td><strong>{veiculo?.modelo || '—'}</strong></td>
+                              <td><span className="placa">{mv.placaVeiculo}</span></td>
+                              <td className="mono">
+                                {mv.kmFeito ? mv.kmFeito.toLocaleString("pt-BR") + " km" : "—"}
+                              </td>
+                              <td>{mv.descricaoManutencao || '—'}</td>
+                              <td>{statusBadge()}</td>
+                              <td className="mono">
+                                {mv.dataManutencao ? fmt(mv.dataManutencao) : "—"}
+                              </td>
+                              <td style={{ maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {mv.observacao || "—"}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -1305,7 +1477,7 @@ function LoginScreen({ onLogin }: { onLogin: (role: "operador" | "gerente") => v
   );
 }
 
-// ── Styles (mantido igual) ─────────────────────────────────────────────
+// ── Styles ─────────────────────────────────────────────────────────────
 const styles = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Inter', system-ui, sans-serif; background: #F0F2F5; color: #111928; }

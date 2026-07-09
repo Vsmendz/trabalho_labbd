@@ -1,6 +1,6 @@
 package com.meufrota.transport_control.controller;
-
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -77,13 +78,60 @@ public class ManutencaoVeiculoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(toDTO(salvo));
     }
 
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Void> atualizarStatus(@PathVariable Integer id, 
+                                            @RequestBody Map<String, String> body) {
+    try {
+        String novoStatus = body.get("status");
+        String observacao = body.get("observacao");
+        
+        // Busca o registro existente
+        ManutencaoVeiculo existente = manutencaoVeiculoService.buscarPorId(id);
+        
+        // Atualiza apenas o status
+        existente.setStatus(novoStatus);
+        
+        if (observacao != null && !observacao.isEmpty()) {
+            existente.setObservacao(observacao);
+        }
+        
+        // Salva
+        manutencaoVeiculoService.salvar(existente);
+        
+        return ResponseEntity.ok().build();
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+}
+
     // Atualizar um registro (ex: mudar status, observação, etc.)
     @PutMapping("/{id}")
     public ResponseEntity<ManutencaoVeiculoDTO> atualizar(@PathVariable Integer id,
                                                           @RequestBody ManutencaoVeiculoDTO dto) {
-        ManutencaoVeiculo registro = toEntity(dto);
-        registro.setId(id);
-        ManutencaoVeiculo atualizado = manutencaoVeiculoService.atualizar(registro);
+        // Busca o registro EXISTENTE no banco (com veiculo e manutencao já preenchidos)
+        ManutencaoVeiculo existente = manutencaoVeiculoService.buscarPorId(id);
+        
+        // Atualiza apenas os campos que podem ser alterados
+        if (dto.getStatus() != null) {
+            existente.setStatus(dto.getStatus());
+        }
+        
+        if (dto.getObservacao() != null) {
+            existente.setObservacao(dto.getObservacao());
+        }
+        
+        if (dto.getDataManutencao() != null) {
+            existente.setDataManutencao(dto.getDataManutencao());
+        }
+        
+        if (dto.getKmFeito() != null) {
+            existente.setKmFeito(dto.getKmFeito());
+        }
+        
+        // Salva o registro atualizado (mantém veiculo e manutencao originais)
+        ManutencaoVeiculo atualizado = manutencaoVeiculoService.salvar(existente);
         return ResponseEntity.ok(toDTO(atualizado));
     }
 
@@ -108,7 +156,6 @@ public class ManutencaoVeiculoController {
         }
         if (mv.getManutencao() != null) {
             dto.setDescricaoManutencao(mv.getManutencao().getDescricao());
-            // ou dto.setIdManutencao(mv.getManutencao().getId());
         }
         return dto;
     }
@@ -121,11 +168,9 @@ public class ManutencaoVeiculoController {
         mv.setKmFeito(dto.getKmFeito());
         mv.setStatus(dto.getStatus());
         mv.setObservacao(dto.getObservacao());
-        // Aqui você precisa buscar as entidades Veiculo e Manutencao pelos IDs ou pela placa
-        // O Service deve fazer isso, então você pode passar apenas os IDs e no service buscar
-        // Mas como estamos no controller, idealmente receberíamos IDs no DTO.
-        // Vou sugerir modificar o DTO para incluir placaVeiculo e idManutencao, e no service resolver.
-        // Por enquanto, vou deixar como está e assumir que o service fará a associação.
+        // Para criação, você precisa buscar Veiculo e Manutencao
+        // Isso deve ser feito no Service
         return mv;
     }
 }
+
