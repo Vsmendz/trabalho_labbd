@@ -13,7 +13,7 @@ public class TesteBackend {
     public static void main(String[] args) {
         // Inicializa o EntityManager
         em = Persistence
-                .createEntityManagerFactory("meu-projeto-pu")
+                .createEntityManagerFactory("LabBD")
                 .createEntityManager();
 
         System.out.println("=".repeat(60));
@@ -123,7 +123,7 @@ public class TesteBackend {
                 System.out.println("✅ Encontradas " + manutencoes.size() + " manutenções:");
                 for (Manutencao m : manutencoes) {
                     // kmReferencia é Integer, mas se for Double use %f
-                    System.out.printf("  🔧 %d - %s (KM: %d)%n",
+                    System.out.printf("  🔧 %d - %s (KM: %.0f)%n",
                             m.getId(),
                             m.getDescricao(),
                             m.getKmReferencia()  // agora é Integer, %d é correto

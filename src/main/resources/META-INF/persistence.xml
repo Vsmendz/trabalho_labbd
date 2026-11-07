@@ -7,7 +7,7 @@
         <class>lab_bd_class.Motorista</class>
         <class>lab_bd_class.Viagem</class>
         <class>lab_bd_class.Manutencao</class>
-        <class>lab_bd_class.ManutencaoRealizada</class>
+        <class>lab_bd_class.ManutencaoVeiculo</class>
 
         <properties>
             <property name="jakarta.persistence.jdbc.driver" value="com.mysql.cj.jdbc.Driver"/>
